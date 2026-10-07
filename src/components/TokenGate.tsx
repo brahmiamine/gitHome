@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react'
+import { useState } from 'react'\nimport type { FormEvent } from 'react'
 import { KeyIcon, MarkGithubIcon, ShieldLockIcon } from '@primer/octicons-react'
 
 interface TokenGateProps {
