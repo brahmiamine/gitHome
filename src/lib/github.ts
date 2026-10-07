@@ -40,7 +40,7 @@ export class GitHubClient {
     this.token = token?.trim() || null
   }
 
-  private async request<T>(path: string, options?: { allow404?: boolean; allow403?: boolean }): Promise<T | null> {
+  private async request<T>(path: string, options?: { allow404?: boolean; allow403?: boolean; allow409?: boolean }): Promise<T | null> {
     const headers: HeadersInit = {
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': API_VERSION,
@@ -53,7 +53,7 @@ export class GitHubClient {
     const response = await fetch(`${API_ROOT}${path}`, { headers })
 
     if (response.status === 404 && options?.allow404) return null
-    if (response.status === 403 && options?.allow403) return null
+    if (response.status === 403 && options?.allow403) return null\n    if (response.status === 409 && options?.allow409) return null
 
     if (!response.ok) {
       let message = `GitHub API: erreur ${response.status}`
@@ -131,7 +131,7 @@ export class GitHubClient {
         allow403: true,
       }),
       this.request<GitHubPages>(`/repos/${repo}/pages`, { allow404: true, allow403: true }),
-      this.request<GitHubCommit[]>(`/repos/${repo}/commits?per_page=1`, { allow409: true } as never),
+      this.request<GitHubCommit[]>(`/repos/${repo}/commits?per_page=1`, { allow409: true }),
       this.request<GitHubRelease>(`/repos/${repo}/releases/latest`, { allow404: true }),
       this.request<Record<string, number>>(`/repos/${repo}/languages`),
       this.request<Array<{ name: string }>>(`/repos/${repo}/branches?per_page=100`),
