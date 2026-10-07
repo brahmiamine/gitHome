@@ -18,7 +18,7 @@ import type {
 } from './types'
 
 const PUBLIC_USERNAME = 'brahmiamine'
-const PAGE_SIZE = 12
+const PAGE_SIZE = 36
 
 function getInitialTheme(): 'dark' | 'light' {
   const stored = localStorage.getItem('githome-theme')
@@ -258,7 +258,7 @@ export default function App() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Rechercher un repository, langage, topic…"
+              placeholder="Rechercher un repo par nom, langage, topic…"
               aria-label="Rechercher un repository"
             />
           </div>
