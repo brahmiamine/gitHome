@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  LockIcon,
-  RepoIcon,
-  SearchIcon,
-  StarIcon,
-} from '@primer/octicons-react'
+import { RepoIcon, SearchIcon } from '@primer/octicons-react'
 import { Header } from './components/Header'
 import { RepoCard } from './components/RepoCard'
 import { TokenGate } from './components/TokenGate'
@@ -235,19 +230,15 @@ export default function App() {
 
         <section className="stats-grid" aria-label="Résumé GitHub">
           <div className="stat-card">
-            <RepoIcon size={20} />
             <div><strong>{stats.total}</strong><span>Repositories</span></div>
           </div>
           <div className="stat-card">
-            <span className="public-dot" />
             <div><strong>{stats.public}</strong><span>Publics</span></div>
           </div>
           <div className="stat-card">
-            <LockIcon size={18} />
             <div><strong>{stats.private}</strong><span>Privés</span></div>
           </div>
           <div className="stat-card">
-            <StarIcon size={20} />
             <div><strong>{stats.stars.toLocaleString('fr-FR')}</strong><span>Stars</span></div>
           </div>
         </section>
@@ -287,7 +278,7 @@ export default function App() {
         </section>
 
         <div className="results-line">
-          <span>{filteredRepos.length} repository{filteredRepos.length > 1 ? 's' : ''}</span>
+          <span>{filteredRepos.length} {filteredRepos.length > 1 ? 'repositories' : 'repository'}</span>
           {search && <span>pour « {search} »</span>}
         </div>
 

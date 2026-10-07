@@ -4,17 +4,13 @@ import {
   ClockIcon,
   CodeIcon,
   GitBranchIcon,
-  GitCommitIcon,
   GitPullRequestIcon,
   IssueOpenedIcon,
-  LinkExternalIcon,
   LockIcon,
   RepoForkedIcon,
-  RepoIcon,
   RocketIcon,
   StarIcon,
   SyncIcon,
-  TagIcon,
   WorkflowIcon,
   XCircleFillIcon,
 } from '@primer/octicons-react'
@@ -35,8 +31,20 @@ interface RepoCardProps {
   client: GitHubClient
 }
 
+type DetailsTab = 'pr' | 'run' | 'dep' | 'info'
+
+const panelTitles: Record<DetailsTab, string> = {
+  pr: 'Pull Requests',
+  run: 'Actions',
+  dep: 'Déploiements',
+  info: 'Repository',
+}
+
 function StatusIcon({ status, conclusion }: { status?: string | null; conclusion?: string | null }) {
-  if (status && status !== 'completed') {
+  if (status && status !== 'completed' && status !== 'success' && status !== 'failure' && status !== 'error') {
+    if (status === 'queued' || status === 'waiting' || status === 'pending' || status === 'inactive') {
+      return <ClockIcon className="status-muted" size={16} />
+    }
     return <SyncIcon className="spin status-progress" size={16} />
   }
   if (conclusion === 'success' || status === 'success') {
@@ -61,6 +69,7 @@ export function RepoCard({ repo, client }: RepoCardProps) {
   const [details, setDetails] = useState<RepoDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [detailsError, setDetailsError] = useState<string | null>(null)
+  const [openTab, setOpenTab] = useState<DetailsTab | null>(null)
 
   useEffect(() => {
     const node = cardRef.current
@@ -106,6 +115,46 @@ export function RepoCard({ repo, client }: RepoCardProps) {
     ?.latestStatus?.environment_url
   const appUrl = deploymentUrl || details?.pages?.html_url || repo.homepage || null
 
+  const tabs = details
+    ? [
+        {
+          key: 'pr' as const,
+          Icon: GitPullRequestIcon,
+          count: `${details.openPullCount}${details.openPullCount === 100 ? '+' : ''}`,
+          label: 'PR',
+          title: 'Pull Requests ouvertes',
+        },
+        {
+          key: 'run' as const,
+          Icon: WorkflowIcon,
+          count: compactNumber(details.workflowRunTotal),
+          label: 'Actions',
+          title: 'Runs GitHub Actions',
+        },
+        {
+          key: 'dep' as const,
+          Icon: RocketIcon,
+          count: String(details.deployments.length),
+          label: 'Déploi.',
+          title: 'Déploiements récents',
+        },
+        {
+          key: 'info' as const,
+          Icon: CodeIcon,
+          count: String(languages.length),
+          label: 'Détails',
+          title: 'Commit, release, licence et langages',
+        },
+      ]
+    : []
+
+  const panelLinks: Record<DetailsTab, string> = {
+    pr: `${repo.html_url}/pulls`,
+    run: `${repo.html_url}/actions`,
+    dep: `${repo.html_url}/deployments`,
+    info: repo.html_url,
+  }
+
   return (
     <article className="repo-card" ref={cardRef}>
       <div className="repo-card-head">
@@ -113,12 +162,11 @@ export function RepoCard({ repo, client }: RepoCardProps) {
           <img className="repo-avatar" src={repo.owner.avatar_url} alt="" />
           <div className="repo-title-wrap">
             <div className="repo-title-row">
-              <RepoIcon size={18} />
               <a className="repo-name" href={repo.html_url} target="_blank" rel="noreferrer">
                 {repo.name}
               </a>
               <span className="visibility-badge">
-                {repo.private ? <LockIcon size={12} /> : null}
+                {repo.private ? <LockIcon size={10} /> : null}
                 {repo.private ? 'Private' : 'Public'}
               </span>
               {repo.archived && <span className="state-badge state-muted">Archived</span>}
@@ -129,20 +177,18 @@ export function RepoCard({ repo, client }: RepoCardProps) {
         </div>
 
         <a className="btn btn-small btn-secondary" href={repo.html_url} target="_blank" rel="noreferrer">
-          GitHub <LinkExternalIcon size={14} />
+          GitHub ↗
         </a>
       </div>
 
       <p className="repo-description">{repo.description || 'Aucune description pour ce repository.'}</p>
 
-      {repo.topics.length > 0 && (
-        <div className="topic-row">
-          {repo.topics.slice(0, 6).map((topic) => (
-            <span className="topic" key={topic}>{topic}</span>
-          ))}
-          {repo.topics.length > 6 && <span className="topic">+{repo.topics.length - 6}</span>}
-        </div>
-      )}
+      <div className="topic-row">
+        {repo.topics.slice(0, 6).map((topic) => (
+          <span className="topic" key={topic}>{topic}</span>
+        ))}
+        {repo.topics.length > 6 && <span className="topic">+{repo.topics.length - 6}</span>}
+      </div>
 
       <div className="repo-metrics">
         <span title="Langage principal">
@@ -168,7 +214,7 @@ export function RepoCard({ repo, client }: RepoCardProps) {
         <div className="repo-links">
           {appUrl && (
             <a className="btn btn-small btn-primary" href={appUrl} target="_blank" rel="noreferrer">
-              <RocketIcon size={14} /> Application
+              Application
             </a>
           )}
         </div>
@@ -190,200 +236,172 @@ export function RepoCard({ repo, client }: RepoCardProps) {
 
         {details && (
           <>
-            <div className="details-summary">
-              <div className="summary-pill">
-                <GitPullRequestIcon size={15} />
-                <strong>{details.openPullCount}{details.openPullCount === 100 ? '+' : ''}</strong>
-                <span>PR ouvertes</span>
-              </div>
-              <div className="summary-pill">
-                <WorkflowIcon size={15} />
-                <strong>{compactNumber(details.workflowRunTotal)}</strong>
-                <span>runs Actions</span>
-              </div>
-              <div className="summary-pill">
-                <RocketIcon size={15} />
-                <strong>{details.deployments.length}</strong>
-                <span>déploiements récents</span>
-              </div>
-              <div className="summary-pill">
-                <GitBranchIcon size={15} />
-                <strong>{details.branchCount}{details.branchCountCapped ? '+' : ''}</strong>
-                <span>branches</span>
-              </div>
+            <div className="details-tabs" role="tablist" aria-label="Activité du repository">
+              {tabs.map((tab) => (
+                <button
+                  type="button"
+                  role="tab"
+                  key={tab.key}
+                  className={`details-tab${openTab === tab.key ? ' active' : ''}`}
+                  aria-selected={openTab === tab.key}
+                  aria-expanded={openTab === tab.key}
+                  title={tab.title}
+                  onClick={() => setOpenTab((value) => (value === tab.key ? null : tab.key))}
+                >
+                  <tab.Icon size={15} />
+                  <strong>{tab.count}</strong>
+                  <span>{tab.label}</span>
+                  <i aria-hidden="true">{openTab === tab.key ? '▴' : '▾'}</i>
+                </button>
+              ))}
             </div>
 
-            {languages.length > 0 && (
-              <section className="language-panel" aria-label="Langages">
-                <div className="language-bar">
-                  {languages.map((language) => (
-                    <span
-                      key={language.name}
-                      style={{
-                        width: `${language.percent}%`,
-                        backgroundColor: languageColors[language.name] || '#8c959f',
-                      }}
-                    />
-                  ))}
+            {openTab && (
+              <section className="details-panel" role="tabpanel">
+                <div className="panel-title">
+                  <h3>{panelTitles[openTab]}</h3>
+                  <a href={panelLinks[openTab]} target="_blank" rel="noreferrer">Voir tout</a>
                 </div>
-                <div className="language-legend">
-                  {languages.map((language) => (
-                    <span key={language.name}>
-                      <i style={{ backgroundColor: languageColors[language.name] || '#8c959f' }} />
-                      {language.name} <b>{language.percent.toFixed(1)}%</b>
-                    </span>
-                  ))}
-                </div>
+
+                {openTab === 'pr' && (
+                  details.recentPulls.length === 0 ? (
+                    <p className="empty-state">Aucune Pull Request récente.</p>
+                  ) : (
+                    <div className="activity-list">
+                      {details.recentPulls.slice(0, 4).map((pr) => (
+                        <a className="activity-item" href={pr.html_url} target="_blank" rel="noreferrer" key={pr.id}>
+                          <span className={`pr-dot ${pr.draft ? 'draft' : pr.merged_at ? 'merged' : pr.state}`} />
+                          <span className="activity-main">
+                            <strong>{pr.title}</strong>
+                            <small>
+                              #{pr.number} · {pr.head.ref} → {pr.base.ref} · {timeAgo(pr.updated_at)}
+                            </small>
+                          </span>
+                          <span className="activity-state">
+                            {pr.draft ? 'Draft' : pr.merged_at ? 'Merged' : pr.state}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {openTab === 'run' && (
+                  details.workflowRuns.length === 0 ? (
+                    <p className="empty-state">Aucun workflow récent ou permission Actions absente.</p>
+                  ) : (
+                    <div className="activity-list">
+                      {details.workflowRuns.slice(0, 4).map((run) => (
+                        <a className="activity-item" href={run.html_url} target="_blank" rel="noreferrer" key={run.id}>
+                          <StatusIcon status={run.status} conclusion={run.conclusion} />
+                          <span className="activity-main">
+                            <strong>{run.name}</strong>
+                            <small>
+                              #{run.run_number} · {run.head_branch || '—'} · {run.event} · {timeAgo(run.updated_at)}
+                            </small>
+                          </span>
+                          <span className="activity-state">{run.conclusion || run.status || '—'}</span>
+                        </a>
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {openTab === 'dep' && (
+                  details.deployments.length === 0 ? (
+                    <p className="empty-state">Aucun déploiement GitHub récent.</p>
+                  ) : (
+                    <div className="activity-list">
+                      {details.deployments.slice(0, 4).map((deployment) => (
+                        <div className="activity-item" key={deployment.id}>
+                          <StatusIcon status={deployment.latestStatus?.state} />
+                          <span className="activity-main">
+                            <strong>{deployment.environment || 'deployment'}</strong>
+                            <small>
+                              {deployment.ref} · {shortSha(deployment.sha)} · {timeAgo(deployment.updated_at)}
+                            </small>
+                          </span>
+                          {deployment.latestStatus?.environment_url ? (
+                            <a
+                              className="activity-link"
+                              href={deployment.latestStatus.environment_url}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Ouvrir
+                            </a>
+                          ) : (
+                            <span className="activity-state">{deployment.latestStatus?.state || '—'}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+
+                {openTab === 'info' && (
+                  <>
+                    <dl className="repo-info-list">
+                      <div>
+                        <dt>Dernier commit</dt>
+                        <dd>
+                          {details.latestCommit ? (
+                            <a href={details.latestCommit.html_url} target="_blank" rel="noreferrer">
+                              {shortSha(details.latestCommit.sha)} · {firstLine(details.latestCommit.commit.message)}
+                            </a>
+                          ) : '—'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Release</dt>
+                        <dd>
+                          {details.release ? (
+                            <a href={details.release.html_url} target="_blank" rel="noreferrer">
+                              {details.release.name || details.release.tag_name}
+                            </a>
+                          ) : 'Aucune'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Licence</dt>
+                        <dd>{repo.license?.spdx_id || 'Non définie'}</dd>
+                      </div>
+                      <div>
+                        <dt>Environnements</dt>
+                        <dd>
+                          {details.environments.length
+                            ? details.environments.map((environment) => environment.name).join(', ')
+                            : '—'}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    {languages.length > 0 && (
+                      <div className="language-panel" aria-label="Langages">
+                        <div className="language-bar">
+                          {languages.map((language) => (
+                            <span
+                              key={language.name}
+                              style={{
+                                width: `${language.percent}%`,
+                                backgroundColor: languageColors[language.name] || '#8c959f',
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <div className="language-legend">
+                          {languages.map((language) => (
+                            <span key={language.name}>
+                              {language.name} <b>{Math.round(language.percent)}%</b>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </section>
             )}
-
-            <div className="details-grid">
-              <section className="detail-panel">
-                <div className="panel-title">
-                  <GitPullRequestIcon size={16} />
-                  <h3>Pull Requests</h3>
-                  <a href={`${repo.html_url}/pulls`} target="_blank" rel="noreferrer">Voir tout</a>
-                </div>
-                {details.recentPulls.length === 0 ? (
-                  <p className="empty-state">Aucune Pull Request récente.</p>
-                ) : (
-                  <div className="activity-list">
-                    {details.recentPulls.slice(0, 4).map((pr) => (
-                      <a className="activity-item" href={pr.html_url} target="_blank" rel="noreferrer" key={pr.id}>
-                        <span className={`pr-dot ${pr.merged_at ? 'merged' : pr.state}`} />
-                        <span className="activity-main">
-                          <strong>{pr.title}</strong>
-                          <small>
-                            #{pr.number} · {pr.head.ref} → {pr.base.ref} · {timeAgo(pr.updated_at)}
-                          </small>
-                        </span>
-                        <span className="activity-state">
-                          {pr.draft ? 'Draft' : pr.merged_at ? 'Merged' : pr.state}
-                        </span>
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="detail-panel">
-                <div className="panel-title">
-                  <WorkflowIcon size={16} />
-                  <h3>Actions</h3>
-                  <a href={`${repo.html_url}/actions`} target="_blank" rel="noreferrer">Voir tout</a>
-                </div>
-                {details.workflowRuns.length === 0 ? (
-                  <p className="empty-state">Aucun workflow récent ou permission Actions absente.</p>
-                ) : (
-                  <div className="activity-list">
-                    {details.workflowRuns.slice(0, 4).map((run) => (
-                      <a className="activity-item" href={run.html_url} target="_blank" rel="noreferrer" key={run.id}>
-                        <StatusIcon status={run.status} conclusion={run.conclusion} />
-                        <span className="activity-main">
-                          <strong>{run.name}</strong>
-                          <small>
-                            #{run.run_number} · {run.head_branch || '—'} · {run.event} · {timeAgo(run.updated_at)}
-                          </small>
-                        </span>
-                        <span className="activity-state">{run.conclusion || run.status || '—'}</span>
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="detail-panel">
-                <div className="panel-title">
-                  <RocketIcon size={16} />
-                  <h3>Déploiements</h3>
-                  <a href={`${repo.html_url}/deployments`} target="_blank" rel="noreferrer">Voir tout</a>
-                </div>
-                {details.deployments.length === 0 ? (
-                  <p className="empty-state">Aucun déploiement GitHub récent.</p>
-                ) : (
-                  <div className="activity-list">
-                    {details.deployments.slice(0, 4).map((deployment) => (
-                      <div className="activity-item" key={deployment.id}>
-                        <StatusIcon status={deployment.latestStatus?.state} />
-                        <span className="activity-main">
-                          <strong>{deployment.environment || 'deployment'}</strong>
-                          <small>
-                            {deployment.ref} · {shortSha(deployment.sha)} · {timeAgo(deployment.updated_at)}
-                          </small>
-                        </span>
-                        {deployment.latestStatus?.environment_url ? (
-                          <a
-                            className="activity-link"
-                            href={deployment.latestStatus.environment_url}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Ouvrir
-                          </a>
-                        ) : (
-                          <span className="activity-state">{deployment.latestStatus?.state || '—'}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="detail-panel">
-                <div className="panel-title">
-                  <CodeIcon size={16} />
-                  <h3>Repository</h3>
-                </div>
-                <dl className="repo-info-list">
-                  <div>
-                    <dt><GitCommitIcon size={14} /> Dernier commit</dt>
-                    <dd>
-                      {details.latestCommit ? (
-                        <a href={details.latestCommit.html_url} target="_blank" rel="noreferrer">
-                          {shortSha(details.latestCommit.sha)} · {firstLine(details.latestCommit.commit.message)}
-                        </a>
-                      ) : '—'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt><TagIcon size={14} /> Release</dt>
-                    <dd>
-                      {details.release ? (
-                        <a href={details.release.html_url} target="_blank" rel="noreferrer">
-                          {details.release.name || details.release.tag_name}
-                        </a>
-                      ) : 'Aucune'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Licence</dt>
-                    <dd>{repo.license?.spdx_id || 'Non définie'}</dd>
-                  </div>
-                  <div>
-                    <dt>Créé</dt>
-                    <dd>{timeAgo(repo.created_at)}</dd>
-                  </div>
-                  <div>
-                    <dt>Environnements</dt>
-                    <dd>
-                      {details.environments.length
-                        ? details.environments.map((environment) => environment.name).join(', ')
-                        : '—'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>GitHub Pages</dt>
-                    <dd>
-                      {details.pages?.html_url ? (
-                        <a href={details.pages.html_url} target="_blank" rel="noreferrer">
-                          {details.pages.html_url.replace(/^https?:\/\//, '')}
-                        </a>
-                      ) : repo.has_pages ? 'Configuré' : 'Non'}
-                    </dd>
-                  </div>
-                </dl>
-              </section>
-            </div>
           </>
         )}
       </div>

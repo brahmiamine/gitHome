@@ -1,7 +1,6 @@
 import {
   MarkGithubIcon,
   MoonIcon,
-  RepoIcon,
   SignOutIcon,
   SunIcon,
   SyncIcon,
@@ -41,7 +40,6 @@ export function Header({
             className="rate-limit"
             title={`Limite API GitHub : ${rateLimit.remaining}/${rateLimit.limit}`}
           >
-            <RepoIcon size={14} />
             <span>{rateLimit.remaining.toLocaleString('fr-FR')} API</span>
           </div>
         )}
