@@ -53,7 +53,8 @@ export class GitHubClient {
     const response = await fetch(`${API_ROOT}${path}`, { headers })
 
     if (response.status === 404 && options?.allow404) return null
-    if (response.status === 403 && options?.allow403) return null\n    if (response.status === 409 && options?.allow409) return null
+    if (response.status === 403 && options?.allow403) return null
+    if (response.status === 409 && options?.allow409) return null
 
     if (!response.ok) {
       let message = `GitHub API: erreur ${response.status}`
